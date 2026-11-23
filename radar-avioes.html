@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Levindo Radar">
+<meta name="theme-color" content="#050a07">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<title>Levindo Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050a07; --panel:#0a120d; --panel2:#0e1912; --line:#173322;
+  --g:#3dff8a; --g2:#1fae5c; --g3:#0f5f33; --dim:#6f9c80; --txt:#cfe9d8;
+  --amber:#ffb547; --red:#ff5d5d; --cyan:#5fe3ff;
+}
+*{box-sizing:border-box}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0;letter-spacing:.12em;color:var(--g);font-weight:700}
+.badge{font-size:11px;padding:3px 8px;border:1px solid var(--g3);border-radius:3px;color:var(--dim)}
+.badge.live{color:var(--g);border-color:var(--g2)}
+.badge.err{color:var(--red);border-color:#6a2626}
+.spacer{flex:1}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr) 320px;gap:0;min-height:calc(100vh - 46px)}
+aside{background:var(--panel);padding:14px;overflow:auto}
+aside.left{border-right:1px solid var(--line)}
+aside.right{border-left:1px solid var(--line)}
+h2{font-size:11px;letter-spacing:.16em;color:var(--dim);margin:0 0 8px;font-weight:600;text-transform:uppercase}
+.sec{margin-bottom:18px}
+.ranges{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ranges button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:9px 0;font:inherit;font-weight:600;border-radius:4px;cursor:pointer}
+.ranges button.on{background:var(--g3);border-color:var(--g);color:#eafff1;box-shadow:0 0 10px rgba(61,255,138,.25)}
+input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);font:inherit;padding:7px 8px;border-radius:4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.btn{width:100%;background:transparent;border:1px solid var(--g3);color:var(--g);font:inherit;padding:7px;border-radius:4px;cursor:pointer;margin-top:6px}
+.btn:hover{background:var(--g3);color:#eafff1}
+.small{font-size:11px;color:var(--dim);line-height:1.5}
+.radar-wrap{position:relative;display:flex;align-items:center;justify-content:center;padding:12px;min-height:420px}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.hud{position:absolute;left:16px;bottom:12px;font-size:11px;color:var(--dim);line-height:1.6;pointer-events:none}
+.hud b{color:var(--g)}
+.list{width:100%;border-collapse:collapse;font-size:11.5px}
+.list th{text-align:left;color:var(--dim);font-weight:600;padding:4px 4px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.08em}
+.list td{padding:5px 4px;border-bottom:1px solid #0f2016;white-space:nowrap}
+.list tr{cursor:pointer}
+.list tr:hover td{background:#0f2016}
+.list tr.sel td{background:#123321;color:#eafff1}
+.cs{color:var(--g);font-weight:700}
+.det-empty{color:var(--dim);line-height:1.6;padding-top:6px}
+.det-head{border:1px solid var(--g3);background:var(--panel2);border-radius:6px;padding:12px;margin-bottom:12px}
+.det-head .big{font-size:22px;font-weight:700;color:var(--g);letter-spacing:.06em}
+.det-head .air{color:var(--txt);margin-top:2px}
+.route{display:flex;align-items:center;gap:8px;margin-top:10px}
+.route .ap{flex:1;min-width:0}
+.route .code{font-size:18px;font-weight:700;color:#eafff1}
+.route .nm{font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.route .arrow{color:var(--g2);font-size:18px}
+.kv{width:100%;border-collapse:collapse}
+.kv td{padding:5px 2px;border-bottom:1px solid #0f2016;vertical-align:top;font-size:12px}
+.kv td:first-child{color:var(--dim);width:46%;padding-right:8px}
+.kv tr.grp td{color:var(--g2);font-size:10px;letter-spacing:.16em;padding-top:14px;border-bottom:1px solid var(--line)}
+.photo{width:100%;border-radius:4px;margin-bottom:10px;display:block}
+.notice{margin:10px 16px 0;padding:10px 12px;border:1px solid #7a5520;background:#1a1307;color:#ffd79a;border-radius:5px;font-size:12px;line-height:1.5;display:none}
+.toggle{display:flex;gap:6px;margin-top:6px}
+.toggle button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);font:inherit;padding:6px;border-radius:4px;cursor:pointer;font-size:11px}
+.toggle button.on{color:var(--g);border-color:var(--g2)}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr;}
+  aside.left{order:2;border-right:none;border-top:1px solid var(--line)}
+  .radar-wrap{order:1;min-height:0;height:min(92vw,560px)}
+  aside.right{order:3;border-left:none;border-top:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>◉ LEVINDO RADAR</h1>
+  <span id="modeBadge" class="badge">A iniciar…</span>
+  <span class="spacer"></span>
+  <span id="clock" class="small"></span>
+</header>
+<div id="notice" class="notice"></div>
+
+<main class="layout">
+  <aside class="left">
+    <div class="sec">
+      <h2>Alcance</h2>
+      <div class="ranges" id="ranges">
+        <button data-r="5">5 km</button>
+        <button data-r="10" class="on">10 km</button>
+        <button data-r="20">20 km</button>
+        <button data-r="50">50 km</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Localização</h2>
+      <div class="row2">
+        <input id="lat" placeholder="Latitude" inputmode="decimal">
+        <input id="lon" placeholder="Longitude" inputmode="decimal">
+      </div>
+      <button class="btn" id="applyLoc">Aplicar coordenadas</button>
+      <button class="btn" id="gpsBtn">⌖ Usar a minha localização</button>
+      <div class="small" id="locInfo" style="margin-top:6px"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Fonte de dados</h2>
+      <div class="small" id="srcInfo" style="margin-top:6px"></div>
+      <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Diagnóstico / proxy próprio</summary>
+        <input id="proxyIn" placeholder="https://o-teu-proxy.workers.dev" style="margin-top:6px">
+        <button class="btn" id="proxySave">Guardar proxy e tentar</button>
+        <pre id="diag" class="small" style="white-space:pre-wrap;margin:8px 0 0;max-height:180px;overflow:auto"></pre>
+      </details>
+    </div>
+
+    <div class="sec">
+      <h2>No alcance (<span id="count">0</span>)</h2>
+      <table class="list">
+        <thead><tr><th>CALLSIGN</th><th>ALT ft</th><th>RUMO</th><th>DIST</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </aside>
+
+  <section class="radar-wrap" id="wrap">
+    <canvas id="radar"></canvas>
+    <div class="hud" id="hud"></div>
+  </section>
+
+  <aside class="right" id="details">
+    <h2>Detalhes do avião</h2>
+    <div class="det-empty">Toca num avião no radar (ou na lista) para ver toda a informação disponível.</div>
+  </aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+// ---------- constantes / utilitários ----------
+const KM_PER_NM = 1.852, FT_TO_M = 0.3048;
+const SWEEP_PERIOD = 4000; // ms por volta
+const REFRESH_MS = 10000;
+const HOLD_MS = 60000;      // um avião que deixa de vir nas respostas fica (estimado) até 60 s antes de desaparecer
+const DEFAULT_PROXY = 'https://levindo-radar.levindos.workers.dev';
+// localização por defeito (arredondada a ~1 km, porque este ficheiro é público no GitHub)
+const DEFAULT_CENTER = {lat:41.63, lon:-8.45, label:'Localização por defeito'};
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const toRad = d => d*Math.PI/180, toDeg = r => r*180/Math.PI;
+function haversineKm(a,b){
+  const R=6371, dLat=toRad(b.lat-a.lat), dLon=toRad(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function bearingDeg(a,b){
+  const y=Math.sin(toRad(b.lon-a.lon))*Math.cos(toRad(b.lat));
+  const x=Math.cos(toRad(a.lat))*Math.sin(toRad(b.lat))-Math.sin(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.cos(toRad(b.lon-a.lon));
+  return (toDeg(Math.atan2(y,x))+360)%360;
+}
+function movePoint(p, brgDeg, km){
+  const R=6371, d=km/R, b=toRad(brgDeg), la=toRad(p.lat), lo=toRad(p.lon);
+  const la2=Math.asin(Math.sin(la)*Math.cos(d)+Math.cos(la)*Math.sin(d)*Math.cos(b));
+  const lo2=lo+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la),Math.cos(d)-Math.sin(la)*Math.sin(la2));
+  return {lat:toDeg(la2), lon:((toDeg(lo2)+540)%360)-180};
+}
+const CARD = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+const cardinal = d => CARD[Math.round(((d%360)+360)%360/22.5)%16];
+const nf = (v,dec=0) => v==null||isNaN(v) ? '—' : Number(v).toLocaleString('pt-PT',{maximumFractionDigits:dec,minimumFractionDigits:dec});
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const callsignOf = p => (p.flight||'').trim() || (p.r||'') || (p.hex||'').toUpperCase();
+function altFt(p){ if(p.alt_baro==='ground') return 0; return typeof p.alt_baro==='number'?p.alt_baro:(typeof p.alt_geom==='number'?p.alt_geom:null); }
+function altText(p){
+  if(p.alt_baro==='ground') return 'No solo';
+  const a=altFt(p); if(a==null) return '—';
+  return `${nf(a)} ft (${nf(a*FT_TO_M)} m)`;
+}
+
+// companhias por prefixo ICAO (fallback se a API de rotas não responder)
+const AIRLINES = {TAP:'TAP Air Portugal',RYR:'Ryanair',EZY:'easyJet',EJU:'easyJet Europe',EZS:'easyJet Switzerland',IBE:'Iberia',IBS:'Iberia Express',VLG:'Vueling',AEA:'Air Europa',BAW:'British Airways',SHT:'British Airways',AFR:'Air France',KLM:'KLM',DLH:'Lufthansa',SWR:'Swiss',AUA:'Austrian',UAE:'Emirates',QTR:'Qatar Airways',THY:'Turkish Airlines',WZZ:'Wizz Air',TRA:'Transavia',TVF:'Transavia France',SAT:'SATA Azores Airlines',RZO:'Azores Airlines',PGA:'Portugália',WHT:'White Airways',EVE:'EuroAtlantic',HFY:'Hi Fly',RAM:'Royal Air Maroc',UAL:'United',AAL:'American',DAL:'Delta',ITY:'ITA Airways',BEL:'Brussels Airlines',SAS:'SAS',NAX:'Norwegian',NOZ:'Norwegian',EXS:'Jet2',TOM:'TUI Airways',TUI:'TUI fly',ANE:'Air Nostrum',BTI:'airBaltic',LOG:'Loganair',EIN:'Aer Lingus',AZU:'Azul',TAM:'LATAM Brasil',GLO:'Gol',CFG:'Condor',EWG:'Eurowings',BCS:'European Air Transport (DHL)',FDX:'FedEx',UPS:'UPS',ETD:'Etihad',SVA:'Saudia',ELY:'El Al',VOE:'Volotea',BER:'Binter',IBB:'Binter Canarias',GBL:'GB Airways',EXV:'Exe Aviation',NJE:'NetJets Europe',VJT:'VistaJet',LBT:'Nouvelair',DAH:'Air Algérie',MAC:'Air Arabia Maroc',TUN:'Tunisair'};
+const airlineFromCs = cs => /^[A-Z]{3}\d/.test(cs) ? (AIRLINES[cs.slice(0,3)]||null) : null;
+const CATEGORY = {A0:'Sem info',A1:'Ligeiro (<7 t)',A2:'Pequeno (7–34 t)',A3:'Grande (34–136 t)',A4:'Grande, alta turbulência (B757)',A5:'Pesado (>136 t)',A6:'Alta performance',A7:'Helicóptero',B1:'Planador',B2:'Balão/dirigível',B4:'Ultraleve',B6:'Drone',C1:'Veículo de emergência',C2:'Veículo de serviço'};
+
+// ---------- estado ----------
+const S = {
+  center: store.get('radar.center') || null,
+  centerLabel: '',
+  rangeKm: store.get('radar.range') || 10,
+  planes: new Map(),   // hex -> {data, t0 (ms da posição), base:{lat,lon}}
+  selected: null,
+  source: null,
+  routes: new Map(),   // callsign -> route obj | 'none' | 'pending'
+  acinfo: new Map(),   // hex -> info | 'none' | 'pending'
+  lastFetch: 0, failCount: 0, fetching:false, srcState:{}
+};
+
+// ---------- fontes de dados reais ----------
+const SOURCES = [
+  // minMs: intervalo mínimo entre pedidos · wait429: pausa quando a fonte responde "demasiados pedidos"
+  {name:'adsb.lol', minMs:30000, wait429:10*60000, url:(la,lo,nm)=>`https://api.adsb.lol/v2/point/${la}/${lo}/${nm}`},   // quota de 500 pedidos/dia por IP
+  // airplanes.live: API só para quem alimenta a rede (resposta deles em nov. 2026), por isso não é usada
+  {name:'adsb.fi', minMs:9000, wait429:15000, url:(la,lo,nm)=>`https://opendata.adsb.fi/api/v2/lat/${la}/lon/${lo}/dist/${nm}`}   // limite de 1 pedido/s
+];
+// Proxies CORS: as APIs ADS-B não autorizam pedidos diretos de páginas web,
+// por isso o pedido pode passar por um intermediário que acrescenta essa autorização.
+const PROXIES = [
+  {name:'direto', wrap:u=>u},
+  {name:'cors.lol', wrap:u=>'https://api.cors.lol/?url='+encodeURIComponent(u)},
+  {name:'corsproxy.io', wrap:u=>'https://corsproxy.io/?url='+encodeURIComponent(u)},
+  // o allorigins guarda respostas em cache: um parâmetro aleatório no próprio pedido ao proxy obriga-o a ir buscar dados novos
+  {name:'allorigins', wrap:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)+'&rand='+Date.now()},
+  {name:'codetabs', wrap:u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)}
+];
+// ---------- modo app (Scriptable) ----------
+// Dentro do Scriptable os pedidos são feitos pela app, como numa app nativa: sem proxies nem restrições do Safari.
+const NATIVE = !!window.__SCRIPTABLE__;
+const Bridge = {seq:0, pending:new Map(), queue:[]};
+window.__takeReqs = () => { const q = Bridge.queue; Bridge.queue = []; return JSON.stringify(q); };
+window.__resolveReq = (id, ok, payload) => {
+  const p = Bridge.pending.get(id); if(!p) return;
+  Bridge.pending.delete(id); ok ? p.res(payload) : p.rej(new Error(String(payload||'falhou')));
+};
+function nativeCall(msg, ms=12000){
+  return new Promise((res, rej) => {
+    const id = ++Bridge.seq; Bridge.pending.set(id, {res, rej}); Bridge.queue.push({id, ...msg});
+    setTimeout(() => { if(Bridge.pending.has(id)){ Bridge.pending.delete(id); rej(new Error('timeout')); } }, ms);
+  });
+}
+function proxyList(){
+  if(NATIVE) return [{name:'app', wrap:u=>u}];
+  const saved = store.get('radar.proxy');
+  const custom = (saved==null ? DEFAULT_PROXY : saved).trim();
+  const list = [...PROXIES];
+  if(custom) list.unshift({name:'proxy próprio', wrap:u=> custom.includes('{url}') ? custom.replace('{url}',encodeURIComponent(u)) : custom.replace(/\/?$/,'/')+'?url='+encodeURIComponent(u)});
+  return list;
+}
+const DIAG = [];
+function diag(msg){ DIAG.unshift(new Date().toLocaleTimeString('pt-PT')+' '+msg); DIAG.length=Math.min(DIAG.length,30); const el=document.getElementById('diag'); if(el) el.textContent=DIAG.join('\n'); }
+async function fetchJson(url, ms=8000){
+  if(NATIVE){
+    const r = await nativeCall({type:'http', url}, ms+3000);
+    if(!r || r.status>=400 || r.status===0) throw new Error('HTTP '+(r?r.status:0));
+    try{ return JSON.parse(r.body); }catch(e){ throw new Error('resposta não é JSON'); }
+  }
+  const ctl = new AbortController(); const t=setTimeout(()=>ctl.abort(),ms);
+  try{
+    const r=await fetch(url,{signal:ctl.signal});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ throw new Error('resposta não é JSON'); }
+  }catch(e){ throw new Error(e.name==='AbortError'?'timeout':(e.message||'falhou')); }
+  finally{ clearTimeout(t); }
+}
+// tenta os caminhos UM DE CADA VEZ (para não sobrecarregar os proxies públicos):
+// primeiro o que funcionou para esta fonte, depois o último que funcionou em geral, depois os restantes
+async function viaBest(urlFor, key){
+  const tag = urlFor.label ? urlFor.label+' via ' : '';
+  const pref = [S.combo?.[key], S.lastGoodProxy];
+  const rank = p => { const i = pref.indexOf(p.name); return i<0 ? 10 : i; };
+  const list = proxyList().slice().sort((a,b)=>rank(a)-rank(b));
+  for(const p of list){
+    try{
+      const j = await fetchJson(p.wrap(urlFor()), 8000);
+      if(key.startsWith('ac') && !(j.ac||j.aircraft)) throw new Error('formato inesperado');
+      S.combo = S.combo||{}; S.combo[key] = p.name; S.lastGoodProxy = p.name;
+      diag(`✓ ${tag}${p.name}`);
+      return {j, c:{p}};
+    }catch(e){
+      diag(`✗ ${tag}${p.name}: ${e.message}`); S.lastErr = e.message;
+      if(S.combo && S.combo[key]===p.name) delete S.combo[key];
+    }
+  }
+  throw new Error(NATIVE ? (S.lastErr||'sem resposta') : 'sem resposta (direto e proxies)');
+}
+// consulta uma fonte (cada uma com o seu proxy); fontes que falham 3 vezes seguidas ficam 60 s em pausa
+async function fetchSource(src, la, lo, nm){
+  const st = S.srcState[src.name] || (S.srcState[src.name] = {ok:null, fails:0, until:0, lastNow:0, n:0, via:'', err:''});
+  if(Date.now() < st.until){ if(!/429|403/.test(st.err)) st.err='em pausa'; throw new Error('em pausa'); }
+  if(st.lastTry && Date.now()-st.lastTry < (src.minMs||5000)) return null;   // respeita o intervalo mínimo da fonte
+  st.lastTry = Date.now();
+  const urlFor = () => src.url(la,lo,nm); urlFor.label = src.name;
+  try{
+    const {j,c} = await viaBest(urlFor, 'ac:'+src.name);
+    const list = j.ac || j.aircraft || [];
+    let nowMs = Number(j.now || j.ctime || 0);
+    if(nowMs && nowMs < 1e12) nowMs *= 1000;
+    if(!nowMs || nowMs > Date.now()+5000) nowMs = Date.now();
+    st.ok=true; st.fails=0; st.err=''; st.via=c.p.name;
+    if(nowMs <= st.lastNow){                       // resposta antiga (cache do proxy): ignora
+      st.stale=(st.stale||0)+1; diag(`· ${src.name}: resposta repetida ignorada`);
+      if(st.stale>=3 && S.combo){ delete S.combo['ac:'+src.name]; st.stale=0; }
+      return null;
+    }
+    st.lastNow=nowMs; st.stale=0; st.n=list.length; st.lastOk=Date.now();
+    return {list, nowMs, name:src.name};
+  }catch(e){
+    st.ok=false; st.fails++; st.err = e.message||'falhou';
+    // pausa crescente: 20 s, 40 s, 80 s, máx. 2 min
+    if(st.fails>=2) st.until = Date.now() + Math.min(120000, 20000*2**(st.fails-2));
+    if(/HTTP 429/.test(st.err)) st.until = Date.now() + (src.wait429||30000);   // demasiados pedidos: espera o tempo próprio da fonte
+    if(/HTTP 403/.test(st.err)) st.until = Date.now() + 30*60000;               // acesso recusado: não insiste durante 30 min
+    throw e;
+  }
+}
+async function fetchLive(){
+  if(!S.center) return;
+  if(S.fetching){ S.refetch=true; return; }   // pedido em curso: repete logo a seguir (ex.: mudança de alcance)
+  S.fetching = true; S.refetch=false;
+  const nm = Math.min(250, Math.ceil(S.rangeKm/KM_PER_NM)+2);
+  const la=S.center.lat.toFixed(4), lo=S.center.lon.toFixed(4);
+  const results = await Promise.allSettled(SOURCES.map(src => fetchSource(src, la, lo, nm)));
+  // junta todas as fontes: por avião fica a posição mais recente e a união dos campos
+  const merged = new Map(); let ok=false;
+  for(const r of results){
+    if(r.status!=='fulfilled') continue;
+    ok = true;
+    if(!r.value) continue;
+    const {list, nowMs, name} = r.value;
+    for(const d of list){
+      if(d.lat==null || d.lon==null || !d.hex) continue;
+      const posTime = nowMs - (d.seen_pos ?? d.seen ?? 0)*1000;
+      const cur = merged.get(d.hex);
+      if(!cur) merged.set(d.hex, {d:{...d}, posTime, srcs:[name]});
+      else {
+        cur.srcs.push(name);
+        if(posTime > cur.posTime){ cur.d = {...cur.d, ...d}; cur.posTime = posTime; }
+        else cur.d = {...d, ...cur.d};
+      }
+    }
+  }
+  S.fetching=false;
+  const okNames = SOURCES.filter(s=>S.srcState[s.name]?.ok).map(s=>s.name);
+  S.source = okNames.length ? `${okNames.length}/${SOURCES.length} fontes` : '';
+  if(ok){ ingest(merged); S.failCount=0; S.lastFetch=Date.now(); hideNotice(); }
+  else {
+    S.failCount=(S.failCount||0)+1; prune(90);
+    if(S.failCount>=3) showNotice(`Sem resposta das fontes ADS-B em ${S.failCount} tentativas seguidas. A página continua a tentar a cada ${REFRESH_MS/1000} s — vê o <b>Diagnóstico</b> no painel lateral.`);
+  }
+  updateBadge();
+  if(S.refetch) setTimeout(fetchLive, 50);
+}
+function ingest(merged){
+  const tnow = Date.now();
+  for(const [hex, m] of merged){
+    const d = m.d, posTime = m.posTime;
+    const old = S.planes.get(hex);
+    if(old && posTime <= old.posTime){            // posição não é mais recente: só atualiza os outros dados
+      old.data = Object.assign({}, d, {lat:old.data.lat, lon:old.data.lon}); old.srcs = m.srcs;
+      continue;
+    }
+    const from = old ? livePos(old) : null;          // parte de onde o avião está desenhado
+    S.planes.set(hex, {data:d, posTime, base:{lat:d.lat, lon:d.lon}, from, blendStart:tnow, srcs:m.srcs});
+  }
+  for(const [k,pl] of S.planes) if(!merged.has(k) && tnow-pl.posTime>HOLD_MS) S.planes.delete(k);
+}
+function prune(sec){ const t=Date.now(); for(const [k,pl] of S.planes) if(t-pl.posTime>sec*1000) S.planes.delete(k); }
+// rota + companhia (adsbdb)
+async function lookupRoute(cs){
+  if(!cs || S.routes.has(cs)) return;
+  S.routes.set(cs,'pending');
+  try{
+    const u=()=>`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`;
+    const {j} = await viaBest(u,'db');
+    const fr = j?.response?.flightroute;
+    S.routes.set(cs, fr ? fr : 'none');
+  }catch(e){ S.routes.delete(cs); }   // falha de rede: volta a tentar mais tarde
+  renderList(); if(S.selected) renderDetails();
+}
+async function lookupAircraft(hex){
+  if(!hex || S.acinfo.has(hex)) return;
+  S.acinfo.set(hex,'pending');
+  try{
+    const {j} = await viaBest(()=>`https://api.adsbdb.com/v0/aircraft/${hex}`,'db');
+    S.acinfo.set(hex, j?.response?.aircraft || 'none');
+  }catch(e){ S.acinfo.delete(hex); }
+  if(S.selected===hex) renderDetails();
+}
+let routeQueue = [];
+setInterval(()=>{ const cs=routeQueue.shift(); if(cs) lookupRoute(cs); }, 400);
+
+// posição estimada a partir da última posição recebida (velocidade + rumo)
+function extrapolate(pl){
+  const d=pl.data;
+  if(!d.gs || d.track==null || d.alt_baro==='ground') return pl.base;
+  const dt = Math.max(0, Math.min(HOLD_MS/1000, (Date.now()-pl.posTime)/1000));
+  return movePoint(pl.base, d.track, d.gs*KM_PER_NM*dt/3600);
+}
+// posição desenhada: quando chega uma posição nova, desliza suavemente durante 2 s em vez de saltar
+const BLEND_MS = 2000;
+function livePos(pl){
+  const target = extrapolate(pl);
+  if(!pl.from) return target;
+  const k = (Date.now()-pl.blendStart)/BLEND_MS;
+  if(k>=1){ pl.from=null; return target; }
+  const e = k*k*(3-2*k);
+  return {lat: pl.from.lat + (target.lat-pl.from.lat)*e, lon: pl.from.lon + (target.lon-pl.from.lon)*e};
+}
+
+// ---------- vista ----------
+function visiblePlanes(){
+  const out=[];
+  if(!S.center) return out;
+  for(const [hex,pl] of S.planes){
+    const pos = livePos(pl);
+    const dist = haversineKm(S.center,pos);
+    if(dist<=S.rangeKm) out.push({hex, pl, pos, dist, brg:bearingDeg(S.center,pos)});
+  }
+  return out.sort((a,b)=>a.dist-b.dist);
+}
+function routeFor(cs){ const r=S.routes.get(cs); return (r && typeof r==='object') ? r : null; }
+function airlineName(cs){ return routeFor(cs)?.airline?.name || airlineFromCs(cs) || null; }
+
+function renderList(){
+  const vis = visiblePlanes();
+  $('count').textContent = vis.length;
+  const rows = vis.map(v=>{
+    const d=v.pl.data, cs=callsignOf(d), r=routeFor(cs);
+    const od = r ? `${r.origin?.iata_code||'?'}→${r.destination?.iata_code||'?'}` : '';
+    const a = d.alt_baro==='ground' ? 'SOLO' : nf(altFt(d));
+    return `<tr data-hex="${esc(v.hex)}" class="${S.selected===v.hex?'sel':''}" title="${esc(airlineName(cs)||'')} ${esc(od)}">
+      <td><span class="cs">${esc(cs)}</span>${od?`<div class="small">${esc(od)}</div>`:''}</td>
+      <td>${a}</td><td>${d.track!=null?nf(d.track)+'°':'—'}</td><td>${nf(v.dist,1)} km</td></tr>`;
+  }).join('');
+  $('listBody').innerHTML = rows || `<tr><td colspan="4" class="small" style="padding:10px 4px">Sem aviões no alcance de ${S.rangeKm} km.</td></tr>`;
+  // pedir rotas dos visíveis
+  for(const v of vis){ const cs=(v.pl.data.flight||'').trim(); if(cs && !S.routes.has(cs) && !routeQueue.includes(cs)) routeQueue.push(cs); }
+}
+$('listBody').addEventListener('click', e=>{ const tr=e.target.closest('tr[data-hex]'); if(tr) select(tr.dataset.hex); });
+
+function select(hex){
+  S.selected = hex; renderList(); renderDetails();
+  const pl=S.planes.get(hex); if(pl){ lookupAircraft(hex); const cs=(pl.data.flight||'').trim(); if(cs) lookupRoute(cs); }
+  if(window.innerWidth<=1000) $('details').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+const LABELS = {
+  hex:'Endereço ICAO (hex)', type:'Tipo de mensagem', flight:'Callsign', r:'Matrícula', t:'Tipo (ICAO)', desc:'Modelo', ownOp:'Proprietário / operador', year:'Ano',
+  alt_baro:'Altitude barométrica', alt_geom:'Altitude geométrica (GNSS)', gs:'Velocidade solo', ias:'Velocidade indicada (IAS)', tas:'Velocidade real (TAS)', mach:'Mach',
+  track:'Rumo (track)', track_rate:'Taxa de viragem', roll:'Inclinação (roll)', mag_heading:'Proa magnética', true_heading:'Proa verdadeira',
+  baro_rate:'Razão vertical (baro)', geom_rate:'Razão vertical (GNSS)', squawk:'Squawk', emergency:'Emergência', category:'Categoria',
+  nav_qnh:'QNH selecionado', nav_altitude_mcp:'Altitude selecionada (MCP)', nav_altitude_fms:'Altitude selecionada (FMS)', nav_heading:'Proa selecionada', nav_modes:'Modos do piloto automático',
+  lat:'Latitude', lon:'Longitude', nic:'NIC', rc:'Raio de contenção', seen_pos:'Posição recebida há', seen:'Última mensagem há', version:'Versão ADS-B',
+  nic_baro:'NIC baro', nac_p:'NACp', nac_v:'NACv', sil:'SIL', sil_type:'Tipo SIL', gva:'GVA', sda:'SDA', alert:'Alerta', spi:'SPI', mlat:'MLAT', tisb:'TIS-B',
+  messages:'Mensagens recebidas', rssi:'Sinal (RSSI)', dbFlags:'Flags (militar/interesse)', wd:'Direção do vento', ws:'Velocidade do vento', oat:'Temp. exterior', tat:'Temp. total', gpsOkBefore:'GPS OK antes de', rr_lat:'Lat. aprox.', rr_lon:'Lon. aprox.', lastPosition:'Última posição'
+};
+function fmtVal(k,v){
+  if(v==null||v==='') return '—';
+  switch(k){
+    case 'alt_baro': case 'alt_geom': case 'nav_altitude_mcp': case 'nav_altitude_fms':
+      return v==='ground' ? 'No solo' : `${nf(v)} ft (${nf(v*FT_TO_M)} m)`;
+    case 'gs': case 'ias': case 'tas': case 'ws': return `${nf(v)} kt (${nf(v*KM_PER_NM)} km/h)`;
+    case 'track': case 'mag_heading': case 'true_heading': case 'nav_heading': case 'wd': return `${nf(v,1)}° ${cardinal(v)}`;
+    case 'baro_rate': case 'geom_rate': return `${v>0?'+':''}${nf(v)} ft/min ${v>200?'↑ a subir':v<-200?'↓ a descer':'→ nivelado'}`;
+    case 'lat': case 'lon': return nf(v,5);
+    case 'seen': case 'seen_pos': return `${nf(v,1)} s`;
+    case 'rssi': return `${nf(v,1)} dBFS`;
+    case 'nav_qnh': return `${nf(v,1)} hPa`;
+    case 'oat': case 'tat': return `${nf(v)} °C`;
+    case 'category': return `${v} · ${CATEGORY[v]||''}`;
+    case 'roll': case 'track_rate': return `${nf(v,2)}°${k==='track_rate'?'/s':''}`;
+    case 'hex': return String(v).toUpperCase();
+    case 'flight': return String(v).trim();
+    case 'nav_modes': return Array.isArray(v)?v.join(', '):String(v);
+    case 'dbFlags': return ({1:'Militar',2:'Interessante',4:'PIA',8:'LADD'})[v]||String(v);
+    case 'lastPosition': return typeof v==='object' ? `${nf(v.lat,4)}, ${nf(v.lon,4)}` : String(v);
+    default:
+      if(Array.isArray(v)) return v.join(', ');
+      if(typeof v==='object') return JSON.stringify(v);
+      if(typeof v==='boolean') return v?'Sim':'Não';
+      return typeof v==='number' ? nf(v,3) : String(v);
+  }
+}
+function renderDetails(){
+  const box=$('details'); const pl=S.planes.get(S.selected);
+  if(!pl){ box.innerHTML = `<h2>Detalhes do avião</h2><div class="det-empty">${S.selected?'O avião selecionado saiu da cobertura.':'Toca num avião no radar (ou na lista) para ver toda a informação disponível.'}</div>`; return; }
+  const d=pl.data, cs=callsignOf(d), r=routeFor(cs), pos=livePos(pl);
+  const dist=haversineKm(S.center,pos), brg=bearingDeg(S.center,pos);
+  const info = S.acinfo.get(S.selected);
+  const air = airlineName(cs);
+  const rStatus = S.routes.get((d.flight||'').trim());
+  const ap = (o,lbl)=> o ? `<div class="ap"><div class="small">${lbl}</div><div class="code">${esc(o.iata_code||o.icao_code||'?')}</div><div class="nm" title="${esc(o.name||'')}">${esc(o.municipality||o.name||'')}${o.country_name?', '+esc(o.country_name):''}</div></div>` : `<div class="ap"><div class="small">${lbl}</div><div class="code">?</div></div>`;
+  let h = `<h2>Detalhes do avião</h2>`;
+  if(info && typeof info==='object' && info.url_photo_thumbnail) h += `<img class="photo" alt="" src="${esc(info.url_photo_thumbnail)}" onerror="this.remove()">`;
+  h += `<div class="det-head"><div class="big">${esc(cs)}</div><div class="air">${esc(air|| (rStatus==='pending'?'A procurar companhia…':'Companhia desconhecida'))}</div>
+    <div class="route">${ap(r?.origin,'ORIGEM')}<div class="arrow">✈</div>${ap(r?.destination,'DESTINO')}</div>
+    ${!r && rStatus==='pending' ? '<div class="small" style="margin-top:6px">A procurar rota…</div>' : ''}
+    ${!r && rStatus==='none' ? '<div class="small" style="margin-top:6px">Rota não disponível para este callsign.</div>' : ''}</div>`;
+  const rows = [];
+  const grp = t => rows.push(`<tr class="grp"><td colspan="2">${t}</td></tr>`);
+  const kv = (k,v) => rows.push(`<tr><td>${esc(k)}</td><td>${v}</td></tr>`);
+  grp('Relativo à nossa posição');
+  kv('Distância', `${nf(dist,2)} km (${nf(dist/KM_PER_NM,1)} NM)`);
+  if(pl.srcs) kv('Visto por', esc(pl.srcs.join(', ')));
+  kv('Azimute (de nós para o avião)', `${nf(brg,0)}° ${cardinal(brg)}`);
+  const a=altFt(d); if(a) { const elev = toDeg(Math.atan2(a*FT_TO_M/1000, dist)); kv('Elevação no céu', `${nf(elev,1)}°`); }
+  if(d.track!=null){ const rel=((d.track-((brg+180)%360))+540)%360-180; kv('Aproximação', Math.abs(rel)<45?'A aproximar-se':Math.abs(rel)>135?'A afastar-se':'A passar lateralmente'); }
+  if(r){ grp('Voo'); kv('Companhia', esc(r.airline?.name||'—') + (r.airline?.iata?` (${esc(r.airline.iata)}/${esc(r.airline.icao)})`:''));
+    if(r.airline?.country) kv('País da companhia', esc(r.airline.country));
+    if(r.origin?.name) kv('Aeroporto de origem', esc(`${r.origin.name} (${r.origin.icao_code||''})`));
+    if(r.destination?.name) kv('Aeroporto de destino', esc(`${r.destination.name} (${r.destination.icao_code||''})`));
+    if(r.callsign_iata) kv('Nº de voo (IATA)', esc(r.callsign_iata)); }
+  if(info && typeof info==='object'){ grp('Aeronave (registo)');
+    [['registration','Matrícula'],['manufacturer','Fabricante'],['type','Modelo'],['icao_type','Tipo ICAO'],['registered_owner','Proprietário registado'],['registered_owner_country_name','País do registo'],['registered_owner_operator_flag_code','Código operador']].forEach(([k,l])=>{ if(info[k]) kv(l, esc(info[k])); });
+  }
+  grp('Dados ADS-B');
+  const order = ['flight','hex','r','t','desc','ownOp','year','category','squawk','emergency','alt_baro','alt_geom','baro_rate','geom_rate','gs','ias','tas','mach','track','mag_heading','true_heading','track_rate','roll','nav_altitude_mcp','nav_altitude_fms','nav_heading','nav_qnh','nav_modes','wd','ws','oat','tat','lat','lon','seen_pos','seen','messages','rssi','type','version','dbFlags'];
+  const done = new Set();
+  for(const k of order){ if(d[k]!==undefined){ kv(LABELS[k]||k, esc(fmtVal(k,d[k]))); done.add(k);} }
+  for(const k of Object.keys(d)){ if(done.has(k)||k.startsWith('_')) continue; kv(LABELS[k]||k, esc(fmtVal(k,d[k]))); }
+  if(d.squawk==='7700'||d.squawk==='7600'||d.squawk==='7500') rows.unshift(`<tr><td colspan="2" style="color:var(--red);font-weight:700">⚠ SQUAWK ${d.squawk} — ${({7700:'Emergência',7600:'Falha de rádio',7500:'Interferência ilícita'})[d.squawk]}</td></tr>`);
+  h += `<table class="kv">${rows.join('')}</table>`;
+  h += `<p class="small" style="margin-top:12px">Fontes: ${esc((pl.srcs||[]).join(', '))} (ADS-B), adsbdb.com (rota/registo). Rotas por callsign podem estar desatualizadas.</p>`;
+  box.innerHTML = h;
+}
+
+// ---------- radar (canvas) ----------
+const cv=$('radar'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1, CX=0, CY=0, R=0, hitList=[];
+function resize(){
+  const wrap=$('wrap'); const rect=wrap.getBoundingClientRect();
+  DPR = window.devicePixelRatio||1;
+  W = rect.width-24; H = rect.height-24;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  CX=W/2; CY=H/2; R=Math.min(W,H)/2-26;
+}
+window.addEventListener('resize', resize);
+
+function draw(now){
+  ctx.clearRect(0,0,W,H);
+  if(R<=20){ requestAnimationFrame(draw); return; }
+  const sweep = ((now % SWEEP_PERIOD)/SWEEP_PERIOD)*360;
+  // fundo
+  const bg=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
+  bg.addColorStop(0,'#0b2215'); bg.addColorStop(1,'#04100a');
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.fill();
+  // anéis
+  ctx.strokeStyle='rgba(61,255,138,.22)'; ctx.lineWidth=1;
+  ctx.font='10px JetBrains Mono, monospace'; ctx.fillStyle='rgba(61,255,138,.55)'; ctx.textAlign='left';
+  for(let i=1;i<=4;i++){
+    const rr=R*i/4; ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2); ctx.stroke();
+    ctx.fillText(`${nf(S.rangeKm*i/4, S.rangeKm*i/4<10?1:0)} km`, CX+4, CY-rr+12);
+  }
+  // cruz + marcas de graus
+  ctx.beginPath(); ctx.moveTo(CX-R,CY); ctx.lineTo(CX+R,CY); ctx.moveTo(CX,CY-R); ctx.lineTo(CX,CY+R); ctx.strokeStyle='rgba(61,255,138,.13)'; ctx.stroke();
+  for(let d=0; d<360; d+=10){
+    const a=toRad(d), l = d%30===0?9:4;
+    ctx.beginPath(); ctx.moveTo(CX+Math.sin(a)*R, CY-Math.cos(a)*R); ctx.lineTo(CX+Math.sin(a)*(R-l), CY-Math.cos(a)*(R-l));
+    ctx.strokeStyle='rgba(61,255,138,.45)'; ctx.stroke();
+  }
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='600 12px JetBrains Mono, monospace'; ctx.fillStyle='rgba(61,255,138,.85)';
+  [['N',0],['E',90],['S',180],['O',270]].forEach(([t,d])=>{ const a=toRad(d); ctx.fillText(t, CX+Math.sin(a)*(R+14), CY-Math.cos(a)*(R+14)); });
+  // rasto do varrimento
+  ctx.save(); ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.clip();
+  const sa = toRad(sweep)-Math.PI/2;
+  if(ctx.createConicGradient){
+    const g = ctx.createConicGradient(sa - toRad(70), CX, CY);
+    g.addColorStop(0,'rgba(61,255,138,0)'); g.addColorStop(70/360,'rgba(61,255,138,.28)'); g.addColorStop(70/360+0.0001,'rgba(61,255,138,0)'); g.addColorStop(1,'rgba(61,255,138,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(CX,CY); ctx.arc(CX,CY,R,sa-toRad(70),sa); ctx.closePath(); ctx.fill();
+  } else {
+    for(let i=0;i<35;i++){ ctx.fillStyle=`rgba(61,255,138,${0.008*(35-i)/35*8})`; ctx.beginPath(); ctx.moveTo(CX,CY); ctx.arc(CX,CY,R,sa-toRad((i+1)*2),sa-toRad(i*2)); ctx.fill(); }
+  }
+  // linha de varrimento
+  ctx.strokeStyle='rgba(140,255,185,.95)'; ctx.lineWidth=2; ctx.shadowColor='#3dff8a'; ctx.shadowBlur=12;
+  ctx.beginPath(); ctx.moveTo(CX,CY); ctx.lineTo(CX+Math.cos(sa)*R, CY+Math.sin(sa)*R); ctx.stroke();
+  ctx.restore(); ctx.shadowBlur=0;
+  // aviões
+  hitList=[];
+  const vis = visiblePlanes();
+  for(const v of vis){
+    const rr = v.dist/S.rangeKm*R, a=toRad(v.brg);
+    const x=CX+Math.sin(a)*rr, y=CY-Math.cos(a)*rr;
+    const delta = ((sweep - v.brg)+360)%360;          // graus desde a última passagem
+    const glow = 1 - delta/360;                        // 1 = acabou de passar
+    const alpha = 0.35 + 0.65*glow;
+    const d=v.pl.data, sel = S.selected===v.hex;
+    const emerg = ['7500','7600','7700'].includes(d.squawk);
+    const col = emerg ? [255,93,93] : sel ? [95,227,255] : [61,255,138];
+    const rgba = (al)=>`rgba(${col[0]},${col[1]},${col[2]},${al})`;
+    // vetor de previsão (1 min)
+    if(d.gs && d.track!=null){
+      const km = d.gs*KM_PER_NM/60, pr = Math.min(km/S.rangeKm*R, R*0.16), ta=toRad(d.track);
+      ctx.strokeStyle=rgba(alpha*.5); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.sin(ta)*pr, y-Math.cos(ta)*pr); ctx.stroke();
+    }
+    // brilho quando o varrimento passa
+    if(glow>0.85){ ctx.fillStyle=rgba((glow-0.85)*2.5); ctx.beginPath(); ctx.arc(x,y,12,0,Math.PI*2); ctx.fill(); }
+    // símbolo (avião orientado pelo rumo)
+    ctx.save(); ctx.translate(x,y); ctx.rotate(toRad(d.track||0));
+    ctx.fillStyle=rgba(alpha); ctx.beginPath();
+    ctx.moveTo(0,-8); ctx.lineTo(1.6,-2); ctx.lineTo(7,1.5); ctx.lineTo(7,3); ctx.lineTo(1.6,1.5); ctx.lineTo(1.2,5.5); ctx.lineTo(3.5,7.5); ctx.lineTo(3.5,8.5); ctx.lineTo(0,7.5);
+    ctx.lineTo(-3.5,8.5); ctx.lineTo(-3.5,7.5); ctx.lineTo(-1.2,5.5); ctx.lineTo(-1.6,1.5); ctx.lineTo(-7,3); ctx.lineTo(-7,1.5); ctx.lineTo(-1.6,-2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    if(sel){ ctx.strokeStyle=rgba(.9); ctx.lineWidth=1.5; ctx.strokeRect(x-12,y-12,24,24); }
+    // etiqueta
+    const cs=callsignOf(d), a2=altFt(d);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.font=`${sel?'700':'600'} 11px JetBrains Mono, monospace`; ctx.fillStyle=rgba(Math.max(alpha,sel?1:0.55));
+    ctx.fillText(cs, x+11, y-3);
+    ctx.font='10px JetBrains Mono, monospace'; ctx.fillStyle=rgba(Math.max(alpha*.8,0.45));
+    const vr = d.baro_rate>200?'↑':d.baro_rate<-200?'↓':'';
+    ctx.fillText(d.alt_baro==='ground'?'SOLO':`${a2!=null?'FL'+String(Math.round(a2/100)).padStart(3,'0'):'—'}${vr} ${d.gs?nf(d.gs)+'kt':''}`, x+11, y+9);
+    hitList.push({hex:v.hex,x,y});
+  }
+  // centro (nós)
+  ctx.fillStyle='#eafff1'; ctx.beginPath(); ctx.arc(CX,CY,3.5,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(234,255,241,.6)'; ctx.beginPath(); ctx.arc(CX,CY,7,0,Math.PI*2); ctx.stroke();
+  if(!S.center){ ctx.fillStyle='#cfe9d8'; ctx.textAlign='center'; ctx.font='12px JetBrains Mono, monospace'; ctx.fillText('À espera da localização…', CX, CY+28); }
+  requestAnimationFrame(draw);
+}
+cv.addEventListener('click', e=>{
+  const r=cv.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
+  let best=null, bd=22;
+  for(const h of hitList){ const dd=Math.hypot(h.x-x,h.y-y); if(dd<bd){bd=dd;best=h;} }
+  if(best) select(best.hex);
+});
+
+// ---------- UI ----------
+function updateBadge(){
+  const b=$('modeBadge');
+  const age = S.lastFetch ? (Date.now()-S.lastFetch)/1000 : Infinity;
+  if(!S.lastFetch && S.failCount===0){ b.className='badge'; b.textContent='A LIGAR…'; }
+  else if(S.failCount>0 && age>REFRESH_MS*2/1000){ b.className='badge err'; b.textContent=`A RECONECTAR (${S.failCount})`; }
+  else { b.className='badge live'; b.textContent='AO VIVO · '+(S.source||'…'); }
+  $('srcInfo').innerHTML = SOURCES.map(src=>{ const st=S.srcState[src.name];
+      if(!st || st.ok===null) return `<span style="color:var(--dim)">○ ${src.name} · a ligar…</span>`;
+      const age = st.lastOk ? Math.round((Date.now()-st.lastOk)/1000) : null;
+      const ageTxt = age==null ? '' : ` · há ${age} s`;
+      const col = age!=null && age>30 ? 'var(--amber)' : 'var(--g)';
+      return st.ok ? `<span style="color:${col}">● ${src.name}</span> · ${st.n} aviões${st.via&&st.via!=='direto'&&st.via!=='app'?' · via '+esc(st.via):''}${ageTxt}`
+                   : `<span style="color:var(--red)">● ${src.name}</span> · ${esc(/429/.test(st.err)?`limite de pedidos — volta a tentar em ${Math.max(1,Math.ceil((st.until-Date.now())/60000))} min`:/403/.test(st.err)?'acesso recusado pela rede (403)':st.err)}`;
+    }).join('<br>') + `<br>Atualiza a cada ${REFRESH_MS/1000} s · rotas: adsbdb.com`;
+  const last = S.lastFetch ? new Date(S.lastFetch).toLocaleTimeString('pt-PT') : '—';
+  $('hud').innerHTML = `Alcance <b>${S.rangeKm} km</b> · ${S.center?`${nf(S.center.lat,4)}, ${nf(S.center.lon,4)}`:'sem posição'}<br>Atualizado: ${last}`;
+}
+function showNotice(html){ const n=$('notice'); n.innerHTML=html; n.style.display='block'; }
+function hideNotice(){ $('notice').style.display='none'; }
+
+function restart(){
+  S.planes.clear(); S.routes.clear(); S.acinfo.clear(); routeQueue=[]; S.selected=null; S.combo=null; S.srcState={}; S.failCount=0;
+  renderDetails(); hideNotice(); fetchLive(); updateBadge(); renderList();
+}
+$('ranges').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-r]'); if(!b) return;
+  S.rangeKm=+b.dataset.r; store.set('radar.range', S.rangeKm);
+  [...$('ranges').children].forEach(x=>x.classList.toggle('on', x===b));
+  fetchLive();
+  renderList(); updateBadge();
+});
+function setCenter(lat,lon,label){
+  S.center={lat,lon}; S.centerLabel=label||''; store.set('radar.center', S.center);
+  $('lat').value=lat.toFixed(5); $('lon').value=lon.toFixed(5);
+  $('locInfo').textContent = label ? label : 'Centro definido.';
+  fetchLive();
+  renderList(); updateBadge();
+}
+$('applyLoc').onclick=()=>{
+  const la=parseFloat($('lat').value.replace(',','.')), lo=parseFloat($('lon').value.replace(',','.'));
+  if(isNaN(la)||isNaN(lo)||Math.abs(la)>90||Math.abs(lo)>180){ $('locInfo').textContent='Coordenadas inválidas.'; return; }
+  setCenter(la,lo,'Coordenadas manuais');
+};
+function askGps(){
+  if(NATIVE){
+    $('locInfo').textContent='A pedir localização…';
+    nativeCall({type:'loc'}, 20000)
+      .then(l => setCenter(l.lat, l.lon, `GPS (±${Math.round(l.acc||0)} m)`))
+      .catch(() => { $('locInfo').textContent='GPS indisponível — a usar '+(S.centerLabel||'a posição guardada').toLowerCase()+'.'; });
+    return;
+  }
+  if(!navigator.geolocation){ $('locInfo').textContent='Geolocalização não suportada neste navegador. Introduz as coordenadas.'; return; }
+  $('locInfo').textContent='A pedir localização…';
+  try{
+    navigator.geolocation.getCurrentPosition(
+      p=>setCenter(p.coords.latitude, p.coords.longitude, `GPS (±${Math.round(p.coords.accuracy)} m)`),
+      err=>{ $('locInfo').textContent='GPS indisponível — a usar '+(S.centerLabel||'a posição guardada').toLowerCase()+'.';
+             if(!S.center) setCenter(DEFAULT_CENTER.lat, DEFAULT_CENTER.lon, DEFAULT_CENTER.label); },
+      {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+  }catch(e){ if(!S.center) setCenter(DEFAULT_CENTER.lat, DEFAULT_CENTER.lon, DEFAULT_CENTER.label); }
+}
+$('gpsBtn').onclick=askGps;
+$('proxyIn').value = store.get('radar.proxy') ?? DEFAULT_PROXY;
+if(NATIVE){ $('proxyIn').style.display='none'; $('proxySave').style.display='none'; }
+$('proxySave').onclick=()=>{ store.set('radar.proxy', $('proxyIn').value.trim()); restart(); };
+
+// ciclo
+setInterval(()=>{ fetchLive(); }, REFRESH_MS);
+setInterval(()=>{ renderList(); if(S.selected) renderDetails(); updateBadge(); $('clock').textContent=new Date().toLocaleTimeString('pt-PT'); }, 1000);
+
+// arranque
+[...$('ranges').children].forEach(x=>x.classList.toggle('on', +x.dataset.r===S.rangeKm));
+resize(); requestAnimationFrame(draw); updateBadge();
+// arranca logo na última posição (ou na posição por defeito) e depois afina com o GPS, se houver
+if(S.center) setCenter(S.center.lat, S.center.lon, 'Última posição guardada');
+else setCenter(DEFAULT_CENTER.lat, DEFAULT_CENTER.lon, DEFAULT_CENTER.label);
+askGps();
+})();
+</script>
+</body>
+</html>
